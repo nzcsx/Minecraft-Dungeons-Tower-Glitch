@@ -13,20 +13,64 @@ keyboard = pykeybd.Controller()
 import ctypes
 scaleFactor = ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100
 
-#### temporary function, not sure if it is useful
-import win32con
-import win32gui
 
-def remove_border(hwnd):
-    style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
+''' Temporary new functions, not sure if they are useful '''
+from win32con import GWL_STYLE, WS_CAPTION, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_FRAMECHANGED
+from win32gui import GetWindowLong, SetWindowLong, SetWindowPos
+
+def remove_border(hwnd): # chatgpt function, remove border of the window, shadow still present
+    style = GetWindowLong(hwnd, GWL_STYLE)
     # Remove the title bar and border
-    style &= ~win32con.WS_CAPTION
+    style &= ~WS_CAPTION
     # Apply the new style
-    win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, style)
+    SetWindowLong(hwnd, GWL_STYLE, style)
     # Redraw the window with the new style
-    win32gui.SetWindowPos(hwnd, 0, 0, 0, 0, 0,
-                            win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOZORDER |
-                            win32con.SWP_FRAMECHANGED)
+    SetWindowPos(hwnd, 0, 0, 0, 0, 0,
+                            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED)
+
+
+def find_tower_button(window,scale=1): # return mouse position of the power button
+    position_window(window,scale)
+    time.sleep(1)
+
+    # flattened reference button
+    flat_button = [ 392, 186, 631, 765, 708, 706, 704, 702, 390, 688, 704, 706, 708, 765, 563, 192, 392, \
+                    392, 186, 626, 626, 683, 713, 416, 395, 381, 391, 708, 708, 647, 496, 563, 192, 392, \
+                    392, 186, 626, 626, 626, 626, 477, 743, 747, 385, 722, 496, 496, 496, 563, 192, 392, \
+                    392, 186, 626, 626, 626, 626, 173, 462, 399, 487, 496, 496, 496, 496, 563, 192, 392, \
+                    392, 186, 626, 626, 626, 626, 626, 173, 765, 556, 496, 496, 496, 496, 563, 192, 392, \
+                    392, 186, 626, 626, 626, 626, 173, 173, 344, 137, 142, 496, 496, 496, 563, 192, 392, \
+                    392, 186, 626, 626, 626, 626, 173, 765, 765, 544, 132, 496, 496, 496, 563, 192, 392, \
+                    392, 186, 626, 765, 626, 626, 173, 173, 395, 131, 124, 496, 496, 765, 563, 192, 392]
+
+
+    img = get_window((0,0,100,int(720*scale/2+100)))
+    img = img.convert('RGB')
+
+    scr_window = []
+    for y in range(img.height):
+        row = []
+        for x in range(img.width):
+            pixel = img.getpixel((x, y))
+            row.append(sum(pixel)) # sum RGB values so result is 2D
+        scr_window.append(row)
+    
+    d_,d = 99999999, 99999999
+    best = None
+    for j in range(0,len(scr_window)-8):
+        for i in range(len(scr_window[0])-17):
+            w = [row[i:i+17] for row in scr_window[j:j+8]]
+            flat_w = [item for sublist in w for item in sublist]
+            d_ = sum([((flat_w[_]-flat_button[_])**2) for _ in range(len(flat_w))])
+            if d_ < d:
+                d = d_
+                best = (j,i)
+                if j > 0 and i > 0 and (d_ == 0):
+                    break
+        if j > 0 and i > 0 and (d_ == 0):
+            break
+
+    return (best[1]+8)/scaleFactor, (best[0]+4)/scaleFactor
 
 
 ''' Helper functions '''
@@ -42,9 +86,9 @@ def get_window(box):
     pic = ImageGrab.grab(bbox=box)
     return pic
 
-def position_window(window):
+def position_window(window,scale=1): # able to change window scale more freely
     ShowWindow(window, SW_SHOWNORMAL)
-    SetWindowPos(window, HWND_TOPMOST, 0, 0, int(1280/scaleFactor), int(720/scaleFactor), 0) # I changed this a bit
+    SetWindowPos(window, HWND_TOPMOST, 0, 0, int(1280*scale/scaleFactor), int(720*scale/scaleFactor), 0)
     SetForegroundWindow(window)
 
 ''' Input functions '''
@@ -129,9 +173,9 @@ if __name__ == '__main__':
         time.sleep(float(config["camp_loading_time"]))
 
         # Open map
-        # remove_border(mcd_window)
+        remove_border(mcd_window)
         type_string(mcd_window, "m")
-        
+
         # Select mainland
         keyboard.press(pykeybd.Key.ctrl_l)  # Left Control
         keyboard.release(pykeybd.Key.ctrl_l)
@@ -144,11 +188,22 @@ if __name__ == '__main__':
         # ensure it is mainland by pressing one more time
         keyboard.press(pykeybd.Key.ctrl_l)  # Left Control
         keyboard.release(pykeybd.Key.ctrl_l)
+        time.sleep(1)
 
-        # Select tower
-        left_click_at(mcd_window, int(30/scaleFactor), int(360/scaleFactor))
+        # Find and select tower button in a small window
+        x,y = find_tower_button(mcd_window,scale=0.6)
+        
+        print('Click Now!') # just for debug ... feel free to remove
+        time.sleep(0.3)
+        print('Click Now!!')
+        time.sleep(0.3)
+        print('Click Now!!!')
+        time.sleep(0.3)
+        mouse.position = (x, y) # left_click restores the scale=1 window so not using that here
+        mouse.click(pymouse.Button.left)
 
         # Select start tower run using keyboard, and wait for map loading
+        position_window(mcd_window) # restore original window
         type_string(mcd_window, "\n")
         time.sleep(float(config["mission_loading_time"]))
 
