@@ -89,7 +89,6 @@ if __name__ == '__main__':
         # Get window, wait for loading
         mcd_window = FindWindow("UnrealWindow", None)
         assert(''.join(GetWindowText(mcd_window).split()) == "MinecraftDungeons")
-        remove_border(mcd_window)
 
         # Keep spamming "x" until main menu
         loadwindow = get_window((100,100,200,200)) # stores previous window
