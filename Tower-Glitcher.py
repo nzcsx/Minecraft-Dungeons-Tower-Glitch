@@ -127,7 +127,7 @@ class TowerTrainer():
         while (self.level <= 1000):
             # Open Dungeons game
             mcd_path = os.path.expanduser(self.config["install_path"])
-            # subprocess.Popen(mcd_path)
+            subprocess.Popen(mcd_path)
             time.sleep(10)
 
             # Get window, wait for loading
