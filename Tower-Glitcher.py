@@ -17,14 +17,14 @@ scaleFactor = ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100
 import win32con
 import win32gui
 
-def remove_border(hwnd):
-    style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
+def remove_border(window):
+    style = win32gui.GetWindowLong(window, win32con.GWL_STYLE)
     # Remove the title bar and border
     style &= ~win32con.WS_CAPTION
     # Apply the new style
-    win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, style)
+    win32gui.SetWindowLong(window, win32con.GWL_STYLE, style)
     # Redraw the window with the new style
-    win32gui.SetWindowPos(hwnd, 0, 0, 0, 0, 0,
+    win32gui.SetWindowPos(window, 0, 0, 0, 0, 0,
                             win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOZORDER |
                             win32con.SWP_FRAMECHANGED)
 
@@ -44,7 +44,7 @@ def get_window(box):
 
 def position_window(window):
     ShowWindow(window, SW_SHOWNORMAL)
-    SetWindowPos(window, HWND_TOPMOST, 0, 0, int(1280/scaleFactor), int(720/scaleFactor), 0) # I changed this a bit
+    SetWindowPos(window, HWND_TOPMOST, 0, 0, int(1280/3*2/scaleFactor), int(720/3*2/scaleFactor), 0) # I changed this a bit
     SetForegroundWindow(window)
 
 ''' Input functions '''
@@ -89,6 +89,7 @@ if __name__ == '__main__':
         # Get window, wait for loading
         mcd_window = FindWindow("UnrealWindow", None)
         assert(''.join(GetWindowText(mcd_window).split()) == "MinecraftDungeons")
+        remove_border(mcd_window)
 
         # Keep spamming "x" until main menu
         loadwindow = get_window((100,100,200,200)) # stores previous window
