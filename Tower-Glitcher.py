@@ -8,9 +8,6 @@ import pynput.mouse as pymouse
 
 import os, time, json, subprocess
 
-mouse = pymouse.Controller()
-keyboard = pykeybd.Controller()
-
 # determine scale factor of user
 import ctypes
 
@@ -20,8 +17,6 @@ class TowerTrainer():
         self.keyboard = pykeybd.Controller()
         self.mouse = pymouse.Controller()
 
-        self.dungeons_window = None
-        self.launcher_window = None
         self.current_window = None
 
         self.level = 263
@@ -106,28 +101,43 @@ class TowerTrainer():
         time.sleep(1)
         self.position_window()
         time.sleep(0.5)
-        mouse.position = (x, y)
-        mouse.click(pymouse.Button.left)
+        self.mouse.position = (x, y)
+        self.mouse.click(pymouse.Button.left)
         
     def left_hold_at(self, x,y):
         time.sleep(1)
         self.position_window()
-        mouse.position = (x, y)
-        mouse.press(pymouse.Button.left)
+        self.mouse.position = (x, y)
+        self.mouse.press(pymouse.Button.left)
         time.sleep(0.5)
-        mouse.release(pymouse.Button.left)
+        self.mouse.release(pymouse.Button.left)
 
-    def type_string(self, string):
-        time.sleep(1)
+    def press_keys(self, input: str | pykeybd.Key | list[pykeybd.Key]):
+        time.sleep(0.5)
         self.position_window()
-        keyboard.type(string)
+        # Type str
+        if   isinstance(input, str): 
+            self.keyboard.type(input)
+        # Press key
+        elif isinstance(input, pykeybd.Key):
+            self.keyboard.press(input)
+            self.keyboard.release(input)
+        # Press multiple keys
+        elif isinstance(input, list) and all([isinstance(key, pykeybd.Key) for key in input]):
+            for key in input:
+                self.keyboard.press(key)
+            for key in reversed(input):
+                self.keyboard.release(key)
+        # Bad input type
+        else:
+            raise Exception("Key press must be str, pykeybd.Key, or a list of pykeybd.Key")
 
     ''' Main loop'''
     def run_main_loop(self):
         while (self.level <= 1000):
             # Open Dungeons game
             mcd_path = os.path.expanduser(self.config["install_path"])
-            subprocess.Popen(mcd_path)
+            #subprocess.Popen(mcd_path)
             time.sleep(10)
 
             # Get window, wait for loading
@@ -139,12 +149,11 @@ class TowerTrainer():
             loadwindow = self.get_window_img((100,100,200,200)) # stores previous window
             while True:
                 time.sleep(0.5)
-                self.type_string("x")
+                self.press_keys("x")
 
                 window0 = self.get_window_img((100,100,200,200)) # window before F1
 
-                keyboard.press(pykeybd.Key.f1)
-                keyboard.release(pykeybd.Key.f1)
+                self.press_keys(pykeybd.Key.f1)
 
                 time.sleep(0.5)
 
@@ -155,40 +164,35 @@ class TowerTrainer():
                     if loadwindow == window1: # if new window is identical to the last new window, F1 works
                         print('I think this is the settings again. Now the game is loaded.')
                         # exit setting page and exit loop
-                        keyboard.press(pykeybd.Key.esc)
-                        keyboard.release(pykeybd.Key.esc)
+                        self.press_keys(pykeybd.Key.esc)
                         break
                     else:
                         # might be the first time that F1 works, or game still loading
                         loadwindow = window1
                 
                 # try to exit setting page anyway, make sure game goes back to main page
-                keyboard.press(pykeybd.Key.esc)
-                keyboard.release(pykeybd.Key.esc)
+                self.keyboard.press(pykeybd.Key.esc)
+                self.keyboard.release(pykeybd.Key.esc)
 
 
             # Start Online Game, wait for entering camp
-            self.type_string("\n")
+            self.press_keys("\n")
             time.sleep(1)
-            self.type_string("\n")
+            self.press_keys("\n")
             time.sleep(float(self.config["camp_loading_time"]))
 
             # Open map
             self.remove_border()
-            self.type_string("m")
+            self.press_keys("m")
 
             # Select mainland
-            keyboard.press(pykeybd.Key.ctrl_l)  # Left Control
-            keyboard.release(pykeybd.Key.ctrl_l)
+            self.press_keys(pykeybd.Key.ctrl_l)  # Left Control
             time.sleep(0.5)
-            keyboard.press(pykeybd.Key.shift_l)  # Left Shift
-            keyboard.release(pykeybd.Key.shift_l)
+            self.press_keys(pykeybd.Key.shift_l)  # Left Shift
             time.sleep(0.5)
-            keyboard.press(pykeybd.Key.ctrl_l)  # Left Control
-            keyboard.release(pykeybd.Key.ctrl_l)
+            self.press_keys(pykeybd.Key.ctrl_l)  # Left Control
             # ensure it is mainland by pressing one more time
-            keyboard.press(pykeybd.Key.ctrl_l)  # Left Control
-            keyboard.release(pykeybd.Key.ctrl_l)
+            self.press_keys(pykeybd.Key.ctrl_l)  # Left Control
             time.sleep(1)
 
             # Find and select tower button in a small window
@@ -200,12 +204,12 @@ class TowerTrainer():
             time.sleep(0.3)
             print('Click Now!!!')
             time.sleep(0.3)
-            mouse.position = (x, y) # left_click restores the scale=1 window so not using that here
-            mouse.click(pymouse.Button.left)
+            self.mouse.position = (x, y) # left_click restores the scale=1 window so not using that here
+            self.mouse.click(pymouse.Button.left)
 
             # Select start tower run using keyboard, and wait for map loading
             self.position_window() # restore original window
-            self.type_string("\n")
+            self.press_keys("\n")
             time.sleep(float(self.config["mission_loading_time"]))
 
             # Move character and conclude mission
@@ -215,9 +219,7 @@ class TowerTrainer():
             time.sleep(6)
 
             # Close the game alt+f4
-            with keyboard.pressed(pykeybd.Key.alt):
-                keyboard.press(pykeybd.Key.f4)
-                keyboard.release(pykeybd.Key.f4)
+            self.press_keys([pykeybd.Key.alt, pykeybd.Key.f4])
             
             # Buffer sleep
             time.sleep(float(self.config["buffer_time"]))
@@ -226,6 +228,8 @@ class TowerTrainer():
             print(self.counter)
             self.level += 3
             self.counter += 1
+
+            break
 
 
 
